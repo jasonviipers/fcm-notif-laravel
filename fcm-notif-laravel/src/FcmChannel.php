@@ -7,6 +7,7 @@ use Illuminate\Notifications\Notification;
 
 class FcmChannel
 {
+    const FCM_API_URL = 'https://fcm.googleapis.com/fcm/send';
     private $client;
     private $apiKey;
 
@@ -50,7 +51,7 @@ class FcmChannel
         ];
 
         // Check if the 'to' field in the FCM message is an array (supports multicast)
-        if (is_array($message->getTo)) {
+        if (is_array($message->getTo())) {
             // Split the 'to' array into chunks of 1000 devices (maximum allowed by FCM)
             $chunks = array_chunk($message->getTo(), 1000);
 
@@ -60,18 +61,18 @@ class FcmChannel
 
                 // Send the FCM API request and decode the response
                 $respons = $this->client->post(
-                    'https://fcm.googleapis.com/fcm/send',
+                    self::FCM_API_URL,
                     [
                         'headers' => $headers,
                         'json' => $message->toArray(),
                     ]
                 );
 
-                array_push($response, json_decode($respons->getBody(), true));
+                $response[] = $this->decodeResponse($respons);
             }
         } else {
             $respons = $this->client->post(
-                'https://fcm.googleapis.com/fcm/send',
+                self::FCM_API_URL,
                 [
                     'headers' => $headers,
                     'json' => $message->toArray(),
@@ -79,10 +80,22 @@ class FcmChannel
             );
 
             // Push the decoded response to the response array
-            array_push($response, json_decode($respons->getBody(), true));
+            array_push($response, $this->decodeResponse($respons));
         }
 
         // Return the response array
         return $response;
+    }
+
+    /**
+     * Decode the FCM API response.
+     *
+     * @param \Psr\Http\Message\ResponseInterface $response
+     *
+     * @return array
+     */
+    private function decodeResponse($response)
+    {
+        return json_decode($response->getBody(), true);
     }
 }
