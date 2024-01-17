@@ -1,0 +1,49 @@
+{
+    "name": "viipers/fcm-notif-laravel",
+    "description": "Laravel FCM (Firebase Cloud Messaging) Notification Channel",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "fcm",
+        "firebase",
+        "notifications"
+    ],
+    "authors": [
+        {
+            "name": "jasonviipers",
+            "email": "jason@chatr.fr"
+        }
+    ],
+    "require": {
+        "php": ">=8.0",
+        "guzzlehttp/guzzle": "*",
+        "illuminate/notifications": "*",
+        "illuminate/queue": "*",
+        "illuminate/support": "*",
+        "illuminate/config": "*"
+    },
+    "require-dev": {
+        "mockery/mockery": "^1.6",
+        "phpunit/phpunit": "^10.5",
+        "orchestra/testbench": "^8.20"
+    },
+    "autoload": {
+        "psr-4": {
+            "Viipers\\FcmNotifLaravel\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Viipers\\FcmNotifLaravel\\FcmNotifLaravelServiceProvider"
+            ]
+        }
+    },
+    
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
