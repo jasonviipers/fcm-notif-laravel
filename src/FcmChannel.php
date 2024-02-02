@@ -4,10 +4,12 @@ namespace Viipers\FcmNotifLaravel;
 
 use GuzzleHttp\Client;
 use Illuminate\Notifications\Notification;
+use Psr\Http\Message\ResponseInterface;
 
 class FcmChannel
 {
     const FCM_API_URL = 'https://fcm.googleapis.com/fcm/send';
+
     private $client;
     private $apiKey;
 
@@ -17,7 +19,7 @@ class FcmChannel
      * @param \GuzzleHttp\Client $client
      * @param string $apiKey
      */
-    public function __construct(Client $client, $apiKey)
+    public function __construct(Client $client, string $apiKey)
     {
         $this->client = $client;
         $this->apiKey = $apiKey;
@@ -29,20 +31,11 @@ class FcmChannel
      * @param mixed $notifiable
      * @param \Illuminate\Notifications\Notification $notification
      *
-     * @return mixed
+     * @return array
      */
-    public function send($notifiable, Notification $notification)
+    public function send($notifiable, Notification $notification): array
     {
         $message = $notification->toFcm($notifiable);
-
-        if (is_null($message->getTo()) && is_null($message->getCondition())) {
-            if (!$to = $notifiable->routeNotificationFor('fcm', $notification)) {
-                return;
-            }
-
-            $message->to($to);
-        }
-
         $response = [];
 
         $headers = [
@@ -52,25 +45,47 @@ class FcmChannel
 
         // Check if the 'to' field in the FCM message is an array (supports multicast)
         if (is_array($message->getTo())) {
-            // Split the 'to' array into chunks of 1000 devices (maximum allowed by FCM)
-            $chunks = array_chunk($message->getTo(), 1000);
-
-            // Iterate through each chunk and send separate requests
-            foreach ($chunks as $chunk) {
-                $message->setTo($chunk);
-
-                // Send the FCM API request and decode the response
-                $respons = $this->client->post(
-                    self::FCM_API_URL,
-                    [
-                        'headers' => $headers,
-                        'json' => $message->toArray(),
-                    ]
-                );
-
-                $response[] = $this->decodeResponse($respons);
-            }
+            $this->sendMulticastNotifications($message, $headers, $response);
         } else {
+            $this->sendSingleNotification($message, $headers, $response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Send a single FCM notification.
+     *
+     * @param \Viipers\FcmNotifLaravel\FcmMessage $message
+     * @param array $headers
+     * @param array $response
+     */
+    private function sendSingleNotification(FcmMessage $message, array $headers, array &$response): void
+    {
+        $respons = $this->client->post(
+            self::FCM_API_URL,
+            [
+                'headers' => $headers,
+                'json' => $message->toArray(),
+            ]
+        );
+
+        $response[] = $this->decodeResponse($respons);
+    }
+
+    /**
+     * Send multicast FCM notifications.
+     *
+     * @param \Viipers\FcmNotifLaravel\FcmMessage $message
+     * @param array $headers
+     * @param array $response
+     */
+    private function sendMulticastNotifications(FcmMessage $message, array $headers, array &$response): void
+    {
+        $chunks = array_chunk($message->getTo(), 1000);
+
+        foreach ($chunks as $chunk) {
+            $message->to($chunk, false); // Set the 'to' field to the current chunk
             $respons = $this->client->post(
                 self::FCM_API_URL,
                 [
@@ -79,12 +94,8 @@ class FcmChannel
                 ]
             );
 
-            // Push the decoded response to the response array
-            array_push($response, $this->decodeResponse($respons));
+            $response[] = $this->decodeResponse($respons);
         }
-
-        // Return the response array
-        return $response;
     }
 
     /**
@@ -94,7 +105,7 @@ class FcmChannel
      *
      * @return array
      */
-    private function decodeResponse($response)
+    private function decodeResponse(ResponseInterface $response): array
     {
         return json_decode($response->getBody(), true);
     }

@@ -51,8 +51,6 @@ class FcmMessageTest extends TestCase
         $this->assertEquals($data, $this->message->getData());
     }
 
-    // Add more test cases for other methods as needed...
-
     /** @test */
     public function it_can_convert_to_array()
     {

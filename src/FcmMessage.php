@@ -66,7 +66,7 @@ class FcmMessage
      *
      * @return $this
      */
-    public function notification($params)
+    public function notification(array $params)
     {
         $this->notification = $params;
 
